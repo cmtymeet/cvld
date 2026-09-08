@@ -11,3 +11,5 @@ Starting references: [Privacy Pass architecture](https://www.rfc-editor.org/rfc/
 - [Independent provider candidates and integration gaps](independent-providers.md)
 
 - [First npm alpha and exact published artifact](npm-alpha-release.md)
+
+- [Native mobile integration boundaries and existing libraries](mobile-boundaries.md)
