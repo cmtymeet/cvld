@@ -10,15 +10,15 @@ Passkey authentication, independently attested eligibility, and a stable pseudon
 npm install --ignore-scripts cvld@0.1.0-alpha.0
 ```
 
-The server and Node holder experiment require **Node 24 or newer on Linux x64**. The aggregate `cvld` export loads the native AnonCreds library. Install that library explicitly before importing the aggregate export:
+The server and Node holder experiment require **Node 24 or newer on Linux x64 with glibc** (tested on Ubuntu 24.04). The aggregate `cvld` export loads the native AnonCreds library. Install that library explicitly before importing the aggregate export:
 
 ```sh
 npm exec --offline -- cvld-install-native
 ```
 
-This opt-in command downloads the official AnonCreds Rust 0.2.3 Linux x64 archive from GitHub, verifies the pinned SHA-256, and extracts `libanoncreds.so` into the resolved dependency directory. It requires network access and `tar`. There is no install/postinstall hook, service installation or automatic native download. The `--offline` flag prevents npm from obtaining a missing command package; the explicitly invoked downloader itself uses the network. The artifact URL and checksum are readable in [`scripts/install-native.js`](https://github.com/corbet-labs/cvld/blob/main/scripts/install-native.js).
+This opt-in command downloads the official AnonCreds Rust 0.2.3 Linux x64 archive from GitHub, verifies the pinned SHA-256, and extracts `libanoncreds.so` into the resolved dependency directory. It requires network access and `tar`. cvld adds no install/postinstall hook or service installation. Its upstream AnonCreds and FFI dependencies do declare install scripts: keep `--ignore-scripts` on the initial install to bypass them, as CI does. A plain npm install may run those upstream installers. The `--offline` flag prevents npm from obtaining a missing command package; the explicitly invoked downloader itself uses the network. The artifact URL and checksum are readable in [`scripts/install-native.js`](https://github.com/corbet-labs/cvld/blob/main/scripts/install-native.js).
 
-macOS, Windows, Linux ARM, Android and iOS native holder builds are not supported by this release. `cvld/client` contains portable WebCrypto wallet functions and a browser WebAuthn adapter without Node or native-addon imports. Native mobile adapters are future work; passkey support alone does not guarantee PRF support.
+macOS, Windows, Linux ARM, musl/Alpine, Android and iOS native holder builds are not supported by this release. `cvld/client` contains portable WebCrypto wallet functions and a browser WebAuthn adapter without Node or native-addon imports. Native mobile adapters are future work; passkey support alone does not guarantee PRF support.
 
 ## Exports and composition
 
