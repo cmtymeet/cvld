@@ -4,17 +4,25 @@ Research snapshot: 2026-09-08. These are candidates, not adopted providers. No s
 
 | Candidate | Documented interface | Fit and unresolved evidence |
 |---|---|---|
-| [humanID](https://docs.human-id.org/web-sdk-integration-guide) | Hosted phone login; server exchange returns an application-specific pseudonymous ID | Closest simple external checker. It is not a documented anonymous-credential issuer. Full production dashboard/API lookup access, session binding and repeat-registration lifecycle remain unverified. |
+| [humanID](https://docs.human-id.org/web-sdk-integration-guide) | Hosted phone login; server exchange returns an application-specific pseudonymous ID | Candidate for a trusted receipt adapter. The provider need not implement cvld's credential protocol. Full production dashboard/API lookup access, application/session binding and repeat-registration lifecycle remain unverified. |
 | [Human.tech / Holonym](https://docs.passport.human.tech/building-with-passport/individual-verifications/api-reference) | Phone credential/uniqueness proofs with wallet-address verification and expiry | Existing privacy-credential machinery, but public wallet linkage and supported application-scoped off-chain integration need scrutiny. No compatible cvld issuer interface is established. |
 | [Taler Operations](https://www.taler-ops.ch/en/merchants.html) | Externally operated fiat digital cash and hosted merchant infrastructure | Stronger payment-privacy alignment than ordinary card checkout; current geographical limits, hosted blind-pass support, credential binding and transaction metadata remain unresolved. |
 
 A hosted card form or SMS SDK alone does not meet the boundary when the application operator can inspect payer/phone records through its service account. cvld consumes externally checked evidence; an internal mock gate cannot establish that a compatible provider exists.
 
+## Receipt adapters and independent checking
+
+Independently operating the phone or payment check does not require the provider to implement AnonCreds or sign cvld's own attestation format. A cvld adapter may consume an authenticated opaque provider receipt, bind it to a pending passkey-authorized issuance operation, enforce durable subject uniqueness, and authorize credential issuance locally. The provider still owns the phone/payment interaction. A signature added by that adapter is an internal assertion, and must not be described as the provider's signature.
+
+For an application-specific random provider subject, a proposed minimal record is a keyed, community-scoped deduplication tag associated with one stable member ID. Credential expiry and passkey rotation must preserve that association. Such a tag reduces retained identifiers; it does not establish that the provider has no underlying identity mapping, prevent a malicious adapter logging the original pseudonym, or prove that operator dashboard/support access cannot expose identity. Those are separate provider-selection requirements.
+
+Application and session binding are mandatory. A receipt from another provider application, an unsigned browser success, or an attacker-chosen correlation value cannot authorize an arbitrary local account. Local replay protection must remain correct under concurrent completion and restart. A lost response after remote consumption requires an explicit retry or reverification path; two independent services do not share a SQLite transaction.
+
 ## humanID
 
 The hosted Web SDK requests a login URL, then exchanges a returned token server-to-server. The documented result contains an app-specific ID and country metadata, not a phone number. This supports pseudonymous application recognition, not necessarily unlinkability from the provider's authentication session. Do not forward unneeded country data or exchange tokens into chat identity.
 
-The [main integration guide](https://docs.human-id.org/web-sdk-integration-guide) says web integration requires provider setup; the [example guide](https://docs.human-id.org/web-sdk-integration-guide/example-web-sdk-integration) refers to console setup. Current provisioning must be verified. Documented callback examples do not establish end-to-end binding to a blinded cvld issuance request. [Provider data and pricing claims](https://www.human-internet.org/partner-with-us) are not a substitute for examining the actual API and operator dashboard.
+The [main integration guide](https://docs.human-id.org/web-sdk-integration-guide) says web integration requires provider setup; the [example guide](https://docs.human-id.org/web-sdk-integration-guide/example-web-sdk-integration) refers to console setup. Current provisioning must be verified. The adapter can perform local issuance binding, but documented callback examples alone do not establish all application/session ownership and replay guarantees it needs. Current deployed response schema and substitution behavior require validation. [Provider data and pricing claims](https://www.human-internet.org/partner-with-us) are not a substitute for examining the actual API and operator dashboard.
 
 ## Human.tech
 
