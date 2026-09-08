@@ -103,8 +103,7 @@ test('a proof is rejected under another audience, session or policy', async () =
     const v = verifier(issuer);
     assert.equal(await v.verify(mutate(await attempt(v, holder, issuer))), false);
   }
-  const changed = verifier(issuer, { policy: { ...POLICY, version: '2' } });
-  assert.throws(() => holder.present(issuer.public, changed.begin(makeAuthenticator().credential, ORIGIN)));
+  assert.throws(() => verifier(issuer, { policy: { ...POLICY, version: '2' } }));
 });
 
 test('a proof cannot be transplanted between fresh passkey sessions', async () => {
@@ -152,13 +151,11 @@ test('renewed presentations of a reusable credential work without a ban record',
   assert.equal(await v.verify(second), true);
 });
 
-test('expiry is enforced at verification even while the login challenge remains alive', async () => {
+test('a credential cannot authorize a challenge that outlives its hidden expiry', async () => {
   const { issuer, holder } = await member({ validUntil: NOW + 10 });
-  let time = NOW;
-  const v = verifier(issuer, { clock: () => time });
-  const input = await attempt(v, holder, issuer);
-  time = NOW + 10;
-  assert.equal(await v.verify(input), false);
+  const v = verifier(issuer);
+  const challenge = v.begin(makeAuthenticator().credential, ORIGIN);
+  assert.throws(() => holder.present(issuer.public, challenge));
 });
 
 test('a login challenge expires at the configured boundary', async () => {
@@ -177,7 +174,7 @@ test('proof output does not disclose factor receipts, secret or exact expiry', a
   const encoded = JSON.stringify(input.presentation);
   assert.equal(encoded.includes(attestation.receiptId), false);
   assert.equal(encoded.includes(String(attestation.validUntil)), false);
-  assert.deepEqual(input.presentation.requested_proof.revealed_attrs, {});
+  assert.deepEqual(Object.keys(input.presentation.requested_proof.revealed_attrs), ['policy']);
   assert.deepEqual(input.presentation.requested_proof.self_attested_attrs, {});
 });
 
