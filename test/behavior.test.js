@@ -186,3 +186,83 @@ test('security configuration must be explicit and malformed proofs fail closed',
   const c = v.begin(makeAuthenticator().credential, ORIGIN);
   assert.equal(await v.verify({ id: c.id, audience: ORIGIN, presentation: 'x'.repeat(100_001), authentication: {} }), false);
 });
+
+test('an all-factor policy requires authenticated evidence for the same holder request', async () => {
+  const policy = { version: 'both', mode: 'all', factors: ['phone', 'payment'] };
+  const phone = makeGate('phone');
+  const payment = makeGate('payment');
+  const issuer = createIssuer({
+    issuerId: 'https://all.example/cvld', policy,
+    attesters: { phone: phone.public, payment: payment.public },
+    receiptStore: createMemoryReceiptStore({ maxEntries: 20 }),
+    maxCredentialLifetimeSeconds: 900, clock: () => NOW,
+  });
+  const holder = createHolder();
+  const offer = issuer.offer();
+  const request = holder.request(issuer.public, offer);
+  const phoneProof = phone.attest(offer, request.request, policy);
+  await assert.rejects(issuer.issue({ offer, request: request.request, attestations: [phoneProof] }));
+  const other = createHolder().request(issuer.public, offer);
+  await assert.rejects(issuer.issue({ offer, request: request.request, attestations: [phoneProof, payment.attest(offer, other.request, policy)] }));
+  request.accept(await issuer.issue({ offer, request: request.request, attestations: [phoneProof, payment.attest(offer, request.request, policy)] }));
+  const v = verifier(issuer, { policy });
+  assert.equal(await v.verify(await attempt(v, holder, issuer)), true);
+});
+
+test('a still-valid gate receipt stays consumed after a shorter joint credential expires', async () => {
+  const policy = { version: 'retention', mode: 'all', factors: ['phone', 'payment'] };
+  const phone = makeGate('phone');
+  const payment = makeGate('payment');
+  let time = NOW;
+  const issuer = createIssuer({
+    issuerId: 'https://retention.example/cvld', policy,
+    attesters: { phone: phone.public, payment: payment.public },
+    receiptStore: createMemoryReceiptStore({ maxEntries: 20 }),
+    maxCredentialLifetimeSeconds: 900, clock: () => time,
+  });
+  const offer = issuer.offer();
+  const pending = createHolder().request(issuer.public, offer);
+  const paymentProof = payment.attest(offer, pending.request, policy, { validUntil: NOW + 600 });
+  await issuer.issue({ offer, request: pending.request, attestations: [paymentProof, phone.attest(offer, pending.request, policy, { validUntil: NOW + 10 })] });
+  time += 20;
+  await assert.rejects(issuer.issue({ offer, request: pending.request, attestations: [paymentProof, phone.attest(offer, pending.request, policy, { validUntil: NOW + 300 })] }));
+});
+
+test('the signed issuance request cannot change while an atomic store is awaited', async () => {
+  const gate = makeGate('phone');
+  const policy = { version: 'snapshot', mode: 'any', factors: ['phone'] };
+  let resume;
+  const issuer = createIssuer({
+    issuerId: 'https://snapshot.example/cvld', policy,
+    attesters: { phone: gate.public },
+    receiptStore: { claimAll: () => new Promise((resolve) => { resume = resolve; }) },
+    maxCredentialLifetimeSeconds: 900, clock: () => NOW,
+  });
+  const offer = issuer.offer();
+  const holder = createHolder();
+  const original = holder.request(issuer.public, offer);
+  const other = createHolder().request(issuer.public, offer);
+  const attestation = gate.attest(offer, original.request, policy);
+  const issuing = issuer.issue({ offer, request: original.request, attestations: [attestation] });
+  Object.assign(original.request, other.request);
+  resume(true);
+  const issued = await issuing;
+  assert.throws(() => other.accept(issued));
+  assert.doesNotThrow(() => original.accept(issued));
+});
+
+test('an untrusted credential issuer cannot impersonate trusted public parameters', async () => {
+  const { issuer, gates } = fixture();
+  const attacker = createIssuer({
+    issuerId: issuer.public.issuerId, policy: POLICY,
+    attesters: Object.fromEntries(Object.entries(gates).map(([id, gate]) => [id, gate.public])),
+    receiptStore: createMemoryReceiptStore({ maxEntries: 20 }),
+    maxCredentialLifetimeSeconds: 900, clock: () => NOW,
+  });
+  const holder = createHolder();
+  const offer = attacker.offer();
+  const pending = holder.request(attacker.public, offer);
+  pending.accept(await attacker.issue({ offer, request: pending.request, attestations: [gates.phone.attest(offer, pending.request)] }));
+  const v = verifier(issuer);
+  assert.equal(await v.verify(await attempt(v, holder, attacker)), false);
+});
