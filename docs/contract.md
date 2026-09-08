@@ -16,6 +16,10 @@ Phone checking and payment processing are performed by independent providers; th
 
 Authentication proves control of a credential. Eligibility proves satisfaction of an admission rule. Both belong inside cvld; use established libraries and test their integration. Internal interfaces, keys and identifier domains should avoid unnecessary correlation. There is no separate clgn repository. Passkeys do not by themselves prove phone possession, payment, uniqueness or privacy-preserving eligibility.
 
+A stable pseudonymous member identity inside one deployment must authenticate the same counterpart in forum and private chat. Registration, eligibility and chat-key certification must bind to that account; one credential must not silently authorize unlimited new member identities. Additional passkeys belong to the same authenticated account. A stable in-community identity does not authorize an operator to collect the private contact graph.
+
+Client-facing functionality must support future native Android/iOS integration. The server may use a server runtime; holder and local-key interfaces must have a portable boundary and verified platform support.
+
 ## Data boundaries
 
 | Location | Candidate minimum state | Forbidden application disclosure |
