@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { presentationRequest } from './requests.js';
 import anoncreds from '@hyperledger/anoncreds-nodejs';
 import { verifyAuthenticationResponse } from '@simplewebauthn/server';
 import { hash, policyDigest, requireClock, requirePositive, requireText } from './encoding.js';
@@ -29,14 +30,7 @@ export function createVerifier(options) {
       if (pending.size >= maxPending) throw new Error('Challenge capacity reached');
       const id = randomBytes(32).toString('base64url');
       const expiresAt = requirePositive(now + lifetime, 'challenge expiry');
-      const request = {
-        nonce: Nonce.generate(), name: 'cvld-admission', version: '1',
-        requested_attributes: { policy: { name: 'policy', restrictions: [{ cred_def_id: publicIssuer.credentialDefinitionId }] } },
-        requested_predicates: {
-          eligible: { name: 'eligible', p_type: '>=', p_value: 1, restrictions: [{ cred_def_id: publicIssuer.credentialDefinitionId }] },
-          valid_until: { name: 'valid_until', p_type: '>=', p_value: expiresAt, restrictions: [{ cred_def_id: publicIssuer.credentialDefinitionId }] },
-        },
-      };
+      const request = presentationRequest(publicIssuer, Nonce.generate(), expiresAt);
       const authentication = {
         challenge: hash(JSON.stringify(['cvld.login.v1', id, audience, digest, request.nonce, expiresAt, credential.id, hash(credential.publicKey)])),
         rpId: rpID, userVerification: requireUV ? 'required' : 'preferred',
@@ -79,7 +73,7 @@ export function createVerifier(options) {
         });
         if (!result.verified || clock() >= state.expiresAt) return false;
         const counter = result.authenticationInfo.newCounter;
-        if (counter > 0 && counter <= state.credential.counter) return false;
+        if ((counter > 0 || state.credential.counter > 0) && counter <= state.credential.counter) return false;
         state.credential.counter = counter;
         return true;
       } catch { return false; }

@@ -144,8 +144,9 @@ test('a session is consumed atomically and cannot be replayed', async () => {
 test('renewed presentations of a reusable credential work without a ban record', async () => {
   const { issuer, holder } = await member();
   const v = verifier(issuer);
-  const first = await attempt(v, holder, issuer);
-  const second = await attempt(v, holder, issuer);
+  const authenticator = makeAuthenticator();
+  const first = await attempt(v, holder, issuer, authenticator);
+  const second = await attempt(v, holder, issuer, authenticator);
   assert.notDeepEqual(first.presentation, second.presentation);
   assert.equal(await v.verify(first), true);
   assert.equal(await v.verify(second), true);
@@ -155,7 +156,7 @@ test('a credential cannot authorize a challenge that outlives its hidden expiry'
   const { issuer, holder } = await member({ validUntil: NOW + 10 });
   const v = verifier(issuer);
   const challenge = v.begin(makeAuthenticator().credential, ORIGIN);
-  // Even bypassing the local expiry guard cannot satisfy the native predicate.
+  // Mutating the advertised expiry cannot weaken the validity predicate.
   challenge.expiresAt = NOW + 1;
   assert.throws(() => holder.present(issuer.public, challenge));
 });
@@ -298,4 +299,15 @@ test('combined attribute and predicate substitution cannot disclose private expi
   challenge.request.requested_attributes.policy.name = 'valid_until';
   challenge.request.requested_predicates.valid_until = { ...challenge.request.requested_predicates.eligible };
   assert.throws(() => holder.present(issuer.public, challenge));
+});
+
+// This experiment records an unresolved seam, not a desired admission rule.
+test('limitation: one holder credential can authenticate two distinct passkeys', async () => {
+  const { issuer, holder } = await member();
+  const v = verifier(issuer);
+  const one = makeAuthenticator();
+  const two = makeAuthenticator();
+  assert.notEqual(one.credential.id, two.credential.id);
+  assert.equal(await v.verify(await attempt(v, holder, issuer, one)), true);
+  assert.equal(await v.verify(await attempt(v, holder, issuer, two)), true);
 });

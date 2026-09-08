@@ -1,4 +1,6 @@
 import { randomBytes } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
+import { presentationRequest } from './requests.js';
 import anoncreds from '@hyperledger/anoncreds-nodejs';
 import { jsonAndRelease } from './encoding.js';
 const { LinkSecret, CredentialRequest, Credential, Presentation } = anoncreds;
@@ -32,6 +34,8 @@ export function createHolder() {
     },
     present(publicIssuer, challenge) {
       if (!credential) throw new Error('No holder credential');
+      const permittedRequest = presentationRequest(publicIssuer, challenge.request?.nonce, challenge.expiresAt);
+      if (!isDeepStrictEqual(challenge.request, permittedRequest)) throw new Error('Unapproved disclosure request');
       if (credential.values.policy.raw !== challenge.policyDigest) throw new Error('Credential policy does not match');
       if (Number(credential.values.valid_until.raw) < challenge.expiresAt) throw new Error('Credential expires before challenge');
       return jsonAndRelease(Presentation.create({
