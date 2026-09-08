@@ -1,15 +1,21 @@
 import { requirePositive } from './encoding.js';
-
-// For experiments only. A deployed issuer must inject durable, atomic storage.
+// Ephemeral implementation with the same atomic result contract as SQLite.
 export function createMemoryReceiptStore({ maxEntries }) {
   requirePositive(maxEntries, 'receipt capacity');
-  const entries = new Map();
+  const receipts = new Map();
+  const results = new Map();
   return {
-    async claimAll(ids, validUntil, now) {
-      for (const [id, expiry] of entries) if (expiry <= now) entries.delete(id);
-      if (new Set(ids).size !== ids.length || ids.some((id) => entries.has(id)) || entries.size + ids.length > maxEntries) return false;
-      for (const id of ids) entries.set(id, validUntil);
-      return true;
+    async issueOnce({ operationId, receipts: requested, resultExpiresAt, now }, produce) {
+      for (const [id, expiry] of receipts) if (expiry <= now) receipts.delete(id);
+      for (const [id, entry] of results) if (entry.expiresAt <= now) results.delete(id);
+      if (results.has(operationId)) return structuredClone(results.get(operationId).result);
+      if (!Array.isArray(requested) || requested.length < 1 || new Set(requested.map((r) => r.id)).size !== requested.length || requested.some((r) => receipts.has(r.id) || r.expiresAt <= now) || receipts.size + requested.length > maxEntries) throw new Error('Receipt unavailable');
+      const result = produce();
+      if (result?.then) throw new TypeError('Synchronous atomic producer required');
+      const snapshot = structuredClone(result);
+      for (const receipt of requested) receipts.set(receipt.id, receipt.expiresAt);
+      results.set(operationId, { result: snapshot, expiresAt: resultExpiresAt });
+      return structuredClone(snapshot);
     },
   };
 }

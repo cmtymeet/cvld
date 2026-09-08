@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
+import { publicBytes } from './admission.js';
 import { presentationRequest } from './requests.js';
 import anoncreds from '@hyperledger/anoncreds-nodejs';
 import { jsonAndRelease } from './encoding.js';
@@ -10,13 +11,14 @@ export function createHolder() {
   const linkSecret = LinkSecret.create();
   let credential;
   return {
-    request(publicIssuer, offer) {
+    request(publicIssuer, offer, memberId) {
+      publicBytes(memberId);
       const requestPair = CredentialRequest.create({
         entropy: randomBytes(32).toString('base64url'),
         credentialDefinition: publicIssuer.credentialDefinition,
         linkSecret, linkSecretId: 'cvld-wallet', credentialOffer: offer,
       });
-      const request = jsonAndRelease(requestPair.credentialRequest);
+      const request = { credentialRequest: jsonAndRelease(requestPair.credentialRequest), binding: { communityId: publicIssuer.communityId, memberId } };
       const metadata = jsonAndRelease(requestPair.credentialRequestMetadata);
       let accepted = false;
       return {
@@ -34,15 +36,16 @@ export function createHolder() {
     },
     present(publicIssuer, challenge) {
       if (!credential) throw new Error('No holder credential');
-      const permittedRequest = presentationRequest(publicIssuer, challenge.request?.nonce, challenge.expiresAt);
+      const permittedRequest = presentationRequest(publicIssuer, challenge.request?.nonce, challenge.proofValidUntil);
       if (!isDeepStrictEqual(challenge.request, permittedRequest)) throw new Error('Unapproved disclosure request');
+      if (credential.values.member_id.raw !== challenge.memberId || credential.values.community_id.raw !== challenge.communityId) throw new Error('Credential account does not match');
       if (credential.values.policy.raw !== challenge.policyDigest) throw new Error('Credential policy does not match');
-      if (Number(credential.values.valid_until.raw) < challenge.expiresAt) throw new Error('Credential expires before challenge');
+      if (Number(credential.values.valid_until.raw) < challenge.proofValidUntil) throw new Error('Credential expires before challenge');
       return jsonAndRelease(Presentation.create({
         presentationRequest: challenge.request,
         credentials: [{ credential }],
         credentialsProve: [
-          { entryIndex: 0, isPredicate: false, referent: 'policy', reveal: true },
+          ...['policy', 'member_id', 'community_id'].map((referent) => ({ entryIndex: 0, isPredicate: false, referent, reveal: true })),
           { entryIndex: 0, isPredicate: true, referent: 'eligible', reveal: true },
           { entryIndex: 0, isPredicate: true, referent: 'valid_until', reveal: true },
         ],

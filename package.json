@@ -4,7 +4,13 @@
   "private": true,
   "description": "Passkey authentication and holder-bound anonymous eligibility proofs",
   "type": "module",
-  "exports": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./admission": "./src/admission.js",
+    "./client": "./src/client.js",
+    "./passkeys": "./src/passkeys.js",
+    "./storage": "./src/sqlite.js"
+  },
   "files": [
     "src",
     "LICENSE.md",

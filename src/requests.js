@@ -8,7 +8,7 @@ export function presentationRequest(publicIssuer, nonce, expiresAt) {
   const restrictions = [{ cred_def_id: publicIssuer.credentialDefinitionId }];
   return {
     nonce, name: 'cvld-admission', version: '1',
-    requested_attributes: { policy: { name: 'policy', restrictions } },
+    requested_attributes: Object.fromEntries(['policy', 'member_id', 'community_id'].map((name) => [name, { name, restrictions }])),
     requested_predicates: {
       eligible: { name: 'eligible', p_type: '>=', p_value: 1, restrictions },
       valid_until: { name: 'valid_until', p_type: '>=', p_value: expiresAt, restrictions },
