@@ -276,3 +276,26 @@ test('a verifier cannot trick the holder into revealing its exact credential exp
   challenge.request.requested_attributes.policy.name = 'valid_until';
   assert.throws(() => holder.present(issuer.public, challenge));
 });
+
+test('a stale zero-counter session cannot roll back a newer passkey counter', async () => {
+  const { issuer, holder } = await member();
+  const v = verifier(issuer);
+  const auth = makeAuthenticator();
+  const first = v.begin(auth.credential, ORIGIN);
+  const stale = v.begin(auth.credential, ORIGIN);
+  const firstInput = { id: first.id, audience: ORIGIN, presentation: holder.present(issuer.public, first), authentication: auth.assert(first.authentication.challenge, { counter: 1 }) };
+  const staleInput = { id: stale.id, audience: ORIGIN, presentation: holder.present(issuer.public, stale), authentication: auth.assert(stale.authentication.challenge, { counter: 0 }) };
+  assert.equal(await v.verify(firstInput), true);
+  assert.equal(auth.credential.counter, 1);
+  assert.equal(await v.verify(staleInput), false);
+  assert.equal(auth.credential.counter, 1);
+});
+
+test('combined attribute and predicate substitution cannot disclose private expiry', async () => {
+  const { issuer, holder } = await member();
+  const v = verifier(issuer);
+  const challenge = v.begin(makeAuthenticator().credential, ORIGIN);
+  challenge.request.requested_attributes.policy.name = 'valid_until';
+  challenge.request.requested_predicates.valid_until = { ...challenge.request.requested_predicates.eligible };
+  assert.throws(() => holder.present(issuer.public, challenge));
+});
