@@ -8,7 +8,7 @@ Research checked 2026-09-08. No implementation, provider, protocol suite or expi
 
 A stable global user ID would join forum, messaging, login and issuance observations. Make any persistent identifier scoped to its purpose. Whether cvld needs a stable verifier-specific pseudonym at all depends on whether admission is a reusable membership credential or anonymous consumable entry permits. Deriving scoped identifiers from a hidden credential secret and proving their binding is a cryptographic requirement, not a feature supplied automatically by every anonymous-credential library.
 
-Separate these roles even if some are initially packaged together:
+cvld owns passkey authentication and eligibility. Distinguish these internal protocol roles without introducing a separate login repository:
 
 | Role | Input/knowledge | Output | State |
 |---|---|---|---|
@@ -16,7 +16,7 @@ Separate these roles even if some are initially packaged together:
 | Anonymous credential issuer | Authenticated attestation and blinded holder request | Credential/proof material | Keys/configuration; bounded anti-replay/issuance state |
 | Holder wallet | Credential secret, issued proofs, local identity keys | Fresh eligibility presentations | Encrypted local secrets and credential state |
 | cvld verifier | Proof, policy, challenge, accepted issuer keys | Boolean eligibility | Trusted keys/policy; replay state when protocol requires it |
-| Login/wallet module (`clgn` optional name) | Passkey assertion/PRF locally; RP stores verification material if server login exists | Unlocked wallet and/or authenticated session | Passkey public verification material; no SMS/payment data |
+| Internal passkey/wallet module | Passkey assertion/PRF locally; RP stores verification material if server login exists | Unlocked wallet and/or authenticated session | Passkey public verification material; no SMS/payment data |
 
 If an adapter runs in the operator's ordinary process and receives raw phone numbers or merchant callbacks, the operator can know those details. Returning only a boolean to another function does not change that. Strong separation needs an independently controlled attester or a protected attester execution/custody arrangement with an explicit threat model. Hosted payment UI does not by itself hide merchant dashboard data.
 
@@ -53,7 +53,7 @@ No bans or per-person revocation list belongs in cvld. Expiry is separate: proof
 
 ## Passkeys: separate responsibilities
 
-Keep wallet/login outside eligibility as a logical module now; a separate published package or service is optional. The risks of mixing are correlating every login with gate issuance, broadening compromise impact, making recovery alter eligibility, and coupling RP/domain changes to credentials. Separate services with one shared identifier/database would still correlate them.
+Keep authentication and eligibility distinct internally within the cvld repository; no separate login repository is planned. The risks of mixing are correlating every login with gate issuance, broadening compromise impact, making recovery alter eligibility, and coupling RP/domain changes to credentials. Separate services with one shared identifier/database would still correlate them.
 
 [WebAuthn Level 3](https://www.w3.org/TR/webauthn-3/) supplies RP-scoped authentication credentials; the RP learns its credential ID and public key. The PRF extension can support a local wrapping key for an independently random wallet/database key. PRF output and unwrapped storage keys must stay client-side. PRF support and device migration require actual supported-device tests. No PRF support must never silently create plaintext storage. An ordinary WebAuthn signature is not anonymous credential presentation and not a bulk encryption key.
 
@@ -82,7 +82,7 @@ Build a verifier boundary against one real upstream anonymous-credential impleme
 
 An output/schema test catches accidental fields but does not prove a malicious operator cannot log memory or correlate traffic. End-to-end privacy requires separate deployment tests (network captures, logging/configuration audit, dependency review) and independent cryptographic review. No pass/fail unit test establishes anonymity against all observers.
 
-## Questions that determine the next slice
+## Engineering choices to resolve through implementation and tests
 
 - Is a trusted external gate allowed to see phone/payment details while the community operator cannot link those records to a member, or must even gate execution be inaccessible to the operator?
 - Does cvld certify a one-time completed gate, or a currently valid condition that expires? Are lost credentials recoverable, replaceable, or intentionally unrecoverable?

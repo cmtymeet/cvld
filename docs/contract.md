@@ -2,7 +2,7 @@
 
 ## Required behavior
 
-cvld is the eligibility layer. A relying application receives a binary result for a holder-presented proof. It must not receive the underlying phone number, payment record, voucher sponsor identity or an identifier that allows those records to be looked up.
+cvld owns passkey authentication and eligibility in one repository. A relying application receives a binary result for a holder-presented proof. It must not receive the underlying phone number, payment record, voucher sponsor identity or an identifier that allows those records to be looked up.
 
 Phone, payment and voucher adapters are independently configurable. The combination policy must be explicit and versioned. cvld does not impose behavioral bans, maintain sanction histories or accept abuse reports. Application conduct and quotas belong to a separate rules layer.
 
@@ -14,7 +14,7 @@ Prefer verify(presentation, audience, challenge, policy) -> boolean to a public 
 
 Issuance and verification are separate roles. An external factor checker inevitably sees some factor details. The deployment must say whether it trusts an independent gate not to correlate them, or whether cryptographic protection must survive issuer/verifier collusion. A separate process operated by the same party is not sufficient to establish that distinction.
 
-Authentication proves control of a credential. Eligibility proves satisfaction of an admission rule. Keep these separate interfaces, keys and identifier domains. Passkeys do not by themselves prove phone possession, payment, uniqueness or privacy-preserving eligibility.
+Authentication proves control of a credential. Eligibility proves satisfaction of an admission rule. Both belong inside cvld; use established libraries and test their integration. Internal interfaces, keys and identifier domains should avoid unnecessary correlation. There is no separate clgn repository. Passkeys do not by themselves prove phone possession, payment, uniqueness or privacy-preserving eligibility.
 
 ## Data boundaries
 

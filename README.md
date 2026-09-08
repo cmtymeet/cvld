@@ -1,6 +1,6 @@
 # cvld
 
-Privacy-preserving eligibility proofs for applications with configurable phone, payment and voucher gates.
+Passkey authentication and privacy-preserving eligibility proofs with configurable phone, payment and voucher gates.
 
 This repository currently contains the behavioral contract and research plan. No production verifier, live adapter or proven anonymous issuance protocol is implemented.
 
