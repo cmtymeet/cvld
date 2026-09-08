@@ -155,6 +155,8 @@ test('a credential cannot authorize a challenge that outlives its hidden expiry'
   const { issuer, holder } = await member({ validUntil: NOW + 10 });
   const v = verifier(issuer);
   const challenge = v.begin(makeAuthenticator().credential, ORIGIN);
+  // Even bypassing the local expiry guard cannot satisfy the native predicate.
+  challenge.expiresAt = NOW + 1;
   assert.throws(() => holder.present(issuer.public, challenge));
 });
 

@@ -32,8 +32,10 @@ export function createIssuer(options) {
     offer() {
       return jsonAndRelease(CredentialOffer.create({ schemaId, credentialDefinitionId, keyCorrectnessProof }));
     },
-    async issue({ offer, request, attestations }) {
+    async issue(input) {
       try {
+        // Snapshot authenticated data before awaiting the external atomic store.
+        const { offer, request, attestations } = structuredClone(input);
         const now = clock();
         if (!Array.isArray(attestations) || attestations.length < 1 || attestations.length > policy.factors.length) throw new Error();
         if (offer.cred_def_id !== credentialDefinitionId || offer.schema_id !== schemaId || request.cred_def_id !== credentialDefinitionId) throw new Error();
@@ -41,6 +43,7 @@ export function createIssuer(options) {
         const factors = new Set();
         const receipts = [];
         let validUntil = now + maximumLifetime;
+        let receiptValidUntil = now;
         for (const attestation of attestations) {
           const attester = attesters.get(attestation.keyId);
           if (!attester || attestation.factor !== attester.factor || factors.has(attestation.factor) ||
@@ -50,9 +53,10 @@ export function createIssuer(options) {
           factors.add(attestation.factor);
           receipts.push(JSON.stringify([issuerId, attestation.keyId, attestation.receiptId]));
           validUntil = Math.min(validUntil, attestation.validUntil);
+          receiptValidUntil = Math.max(receiptValidUntil, attestation.validUntil);
         }
         if (policy.mode === 'all' && !policy.factors.every((factor) => factors.has(factor))) throw new Error();
-        if (!(await receiptStore.claimAll(receipts, validUntil, now))) throw new Error();
+        if (!(await receiptStore.claimAll(receipts, receiptValidUntil, now))) throw new Error();
         return jsonAndRelease(Credential.create({
           credentialDefinition, credentialDefinitionPrivate, credentialOffer: offer, credentialRequest: request,
           attributeRawValues: { policy: digest, eligible: '1', valid_until: String(validUntil) },
