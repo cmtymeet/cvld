@@ -9,3 +9,5 @@ Starting references: [Privacy Pass architecture](https://www.rfc-editor.org/rfc/
 - [Implementation and executable test evidence](implementation-status.md)
 
 - [Independent provider candidates and integration gaps](independent-providers.md)
+
+- [First npm alpha and exact published artifact](npm-alpha-release.md)
