@@ -18,7 +18,7 @@ cvld owns passkey authentication and eligibility. Distinguish these internal pro
 | cvld verifier | Proof, policy, challenge, accepted issuer keys | Boolean eligibility | Trusted keys/policy; replay state when protocol requires it |
 | Internal passkey/wallet module | Passkey assertion/PRF locally; RP stores verification material if server login exists | Unlocked wallet and/or authenticated session | Passkey public verification material; no SMS/payment data |
 
-If an adapter runs in the operator's ordinary process and receives raw phone numbers or merchant callbacks, the operator can know those details. Returning only a boolean to another function does not change that. Strong separation needs an independently controlled attester or a protected attester execution/custody arrangement with an explicit threat model. Hosted payment UI does not by itself hide merchant dashboard data.
+If an adapter runs in the operator's ordinary process and receives raw phone numbers or merchant callbacks, the operator can know those details. Returning only a boolean to another function does not change that. The operating model requires an independent external phone/payment provider. A self-operated protected attester is not the selected architecture. Hosted payment UI does not by itself hide merchant dashboard data; provider API and account access must be examined.
 
 ## Existing building blocks
 
@@ -42,7 +42,7 @@ Suggested first comparison: AnonCreds for reusable holder credentials versus Pri
 A system cannot reliably remember that one phone has already obtained a credential after forgetting every distinguishable trace of that fact. Options remain open:
 
 1. Long-lived opaque per-phone deduplication entry: persistent gate state, strong continuity for that phone, number-recycling/recovery policy needed.
-2. Epoch-limited deduplication: erase old state after the maximum applicable credential/replay lifetime; the same number can return in a new epoch. Consequences for quota farming must be handled in crls.
+2. Epoch-limited deduplication: erase old state after the maximum applicable credential/replay lifetime; the same number can return in a new epoch. Consequences for quota farming must be handled in cfrm.
 3. Delegate uniqueness entirely to an attester that retains its own records: cvld learns no phone mapping, but the system trusts the attester's enforcement and privacy.
 
 These cannot assert one unique human. Separate payment and phone credentials also do not establish one unique human unless linked with a deliberate policy. If gates are OR alternatives, multiple vouchers or payments may admit multiple credentials; decide whether that is accepted economic friction.
@@ -86,7 +86,7 @@ An output/schema test catches accidental fields but does not prove a malicious o
 
 - Is a trusted external gate allowed to see phone/payment details while the community operator cannot link those records to a member, or must even gate execution be inaccessible to the operator?
 - Does cvld certify a one-time completed gate, or a currently valid condition that expires? Are lost credentials recoverable, replaceable, or intentionally unrecoverable?
-- Should cvld know a stable pseudonymous account, or should it verify a holder's proof without recognizing repeat visits? crls continuity can be separate.
+- Should cvld know a stable pseudonymous account, or should it verify a holder's proof without recognizing repeat visits? cfrm rules continuity can be separate.
 - Is one phone one credential the required uniqueness scope, or must phone/payment/voucher routes converge on one wallet? What transfer/re-entry tolerance is acceptable?
 
 No provider integration or dependency implementation has been tested.

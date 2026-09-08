@@ -12,7 +12,7 @@ A verification result is not a proof of one-human uniqueness or good character. 
 
 Prefer verify(presentation, audience, challenge, policy) -> boolean to a public lookup of an arbitrary global user ID. The holder proves eligibility and control of an audience-scoped identity. A global shared ID would create an unnecessary cross-service correlation key.
 
-Issuance and verification are separate roles. An external factor checker inevitably sees some factor details. The deployment must say whether it trusts an independent gate not to correlate them, or whether cryptographic protection must survive issuer/verifier collusion. A separate process operated by the same party is not sufficient to establish that distinction.
+Phone checking and payment processing are performed by independent providers; the application operator does not own or operate either service. cvld integrates provider-issued evidence. Provider selection must examine API responses, dashboards, callbacks, lookup handles and correlation paths, not only a boolean response schema. The selected protocol must state its protection against provider/verifier collusion. A self-operated checker or enclave is not the operating model.
 
 Authentication proves control of a credential. Eligibility proves satisfaction of an admission rule. Both belong inside cvld; use established libraries and test their integration. Internal interfaces, keys and identifier domains should avoid unnecessary correlation. There is no separate clgn repository. Passkeys do not by themselves prove phone possession, payment, uniqueness or privacy-preserving eligibility.
 
@@ -47,7 +47,7 @@ Unit tests can verify boundary behavior and arithmetic. Cryptographic unlinkabil
 
 ## Open decisions
 
-- Trusted independent gate versus protection against issuer/verifier collusion.
+- Compatible independent phone and payment providers, including their exact evidence interface and correlation limits.
 - Credential lifetime, renewal and phone-number recycling.
 - Exact credential scheme, language and maintained upstream libraries.
 - Passkey recovery and client-held key portability.
