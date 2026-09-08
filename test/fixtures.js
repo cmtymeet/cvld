@@ -38,6 +38,19 @@ export function makeAuthenticator() {
   ]));
   return {
     credential: { id, publicKey, counter: 0, transports: ['internal'] },
+    register(challenge, { origin = ORIGIN, rpID = RP_ID, flags = 69 } = {}) {
+      const clientDataJSON = Buffer.from(JSON.stringify({ type: 'webauthn.create', challenge, origin, crossOrigin: false }));
+      const rawId = Buffer.from(id, 'base64url');
+      const length = Buffer.alloc(2); length.writeUInt16BE(rawId.length);
+      const authData = Buffer.concat([sha256(rpID), Buffer.from([flags]), Buffer.alloc(4), Buffer.alloc(16), length, rawId, publicKey]);
+      const signature = sign('sha256', Buffer.concat([authData, sha256(clientDataJSON)]), keys.privateKey);
+      const attestationObject = encodeCBOR(new Map([
+        ['fmt', 'packed'], ['authData', authData], ['attStmt', new Map([['alg', -7], ['sig', signature]])],
+      ]));
+      return { id, rawId: id, type: 'public-key', clientExtensionResults: { credProps: { rk: true } }, response: {
+        clientDataJSON: clientDataJSON.toString('base64url'), attestationObject: Buffer.from(attestationObject).toString('base64url'), transports: ['internal'],
+      } };
+    },
     assert(challenge, { origin = ORIGIN, rpID = RP_ID, flags = 5, counter = 0 } = {}) {
       const clientDataJSON = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge, origin, crossOrigin: false }));
       const counterBytes = Buffer.alloc(4);
