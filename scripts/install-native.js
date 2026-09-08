@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, dirname } from 'node:path';
+import { createRequire } from 'node:module';
 
 // npm integrity covers package tarballs; upstream's native download is separate.
 if (process.platform !== 'linux' || process.arch !== 'x64') throw new Error('This experiment supports Linux x64 only');
@@ -16,7 +16,8 @@ if (createHash('sha256').update(bytes).digest('hex') !== expected) throw new Err
 const work = await mkdtemp(join(tmpdir(), 'cvld-native-'));
 try {
   const archive = join(work, 'library.tar.gz');
-  const destination = fileURLToPath(new URL('../node_modules/@hyperledger/anoncreds-nodejs/native/', import.meta.url));
+  const require = createRequire(import.meta.url);
+  const destination = join(dirname(require.resolve('@hyperledger/anoncreds-nodejs/package.json')), 'native');
   await writeFile(archive, bytes);
   await mkdir(destination, { recursive: true });
   execFileSync('tar', ['--extract', '--gzip', '--file', archive, '--directory', destination, './libanoncreds.so'], { stdio: 'inherit' });

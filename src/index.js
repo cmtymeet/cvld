@@ -5,7 +5,7 @@ export { createMemoryReceiptStore } from './receipts.js';
 export { policyDigest, issuanceDigest, encodeAttestation } from './encoding.js';
 
 // New boundaries under test; implemented after the failing CI run.
-export function createPasskeyService() { throw new Error('Enrollment not implemented'); }
-export function createMemoryCredentialStore() { throw new Error('Credential storage not implemented'); }
-export function createSqliteState() { throw new Error('Durable state not implemented'); }
+export { createPasskeyService } from './passkeys.js';
+export { createMemoryCredentialStore } from './credential-store.js';
+export { createSqliteState } from './sqlite.js';
 export function restoreIssuer() { throw new Error('Issuer restoration not implemented'); }
