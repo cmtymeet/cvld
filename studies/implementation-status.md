@@ -54,7 +54,7 @@ Those strings stand for the grant's corresponding values, not literal labels. `v
 
 The Node aggregate export loads AnonCreds; browser consumers must use `cvld/client`. The admission export uses Node crypto but no native addon. Protocol JSON and raw-byte interfaces allow independent mobile implementations; this is not a claim that every export already runs on Android or iOS.
 
-The npm lockfile pins artifacts. CI disables lifecycle scripts. The explicit native installer verifies SHA256 before extracting the official Linux x64 artifact and resolves the actual dependency directory, including hoisted installs. A separate consumer installs the actual npm tarball outside the checkout and imports the package and subpaths. Source reproducibility and independent native-binary auditing remain unverified. The package is still private in its manifest and has not been published.
+The npm lockfile pins artifacts. CI disables lifecycle scripts. The explicit native installer verifies SHA256 before extracting the official Linux x64 artifact and resolves the actual dependency directory, including hoisted installs. A separate consumer installs the actual npm tarball outside the checkout and imports the package and subpaths. Source reproducibility and independent native-binary auditing remain unverified. The experimental release manifest targets npm version `0.1.0-alpha.0` under the `alpha` tag. CI uploads the tested tarball, npm pack metadata and SHA-256 after all checks pass; publication is a separate authorized action. The native downloader is an explicit `cvld-install-native` command, with no lifecycle hook.
 
 ## Security limits
 
@@ -66,7 +66,7 @@ The holder validates the complete disclosure request, preventing substitution of
 
 ## Test-driven evidence
 
-All tests execute on standard public Ubuntu GitHub Actions runners with synthetic data, no application secrets, uploaded artifacts or caches. These runners are [free for public repositories](https://docs.github.com/en/billing/concepts/product-billing/github-actions). No local desktop tests or builds were used.
+All tests execute on standard public Ubuntu GitHub Actions runners with synthetic data, no application secrets or caches. The release job uploads only the reviewed package tarball, public pack metadata and its checksum with one-day retention. These runners are [free for public repositories](https://docs.github.com/en/billing/concepts/product-billing/github-actions). No local desktop tests or builds were used.
 
 | Cycle | Public evidence |
 |---|---|
