@@ -1,6 +1,6 @@
 # First npm alpha
 
-Published on 2026-09-08 as [`@corbet-labs/cvld@0.1.0-alpha.0`](https://www.npmjs.com/package/@corbet-labs/cvld/v/0.1.0-alpha.0), with the `alpha` distribution tag. The unscoped `cvld` name was rejected by npm's similarity policy even though the registry returned no existing package. The repository and component name remain cvld.
+Published on 2026-09-08 as [`@corbet-labs/cvld@0.1.0-alpha.0`](https://www.npmjs.com/package/@corbet-labs/cvld/v/0.1.0-alpha.0), with the `alpha` distribution tag. The registry also assigned `latest` on this initial publication; the version is still explicitly experimental. Use the documented version or `alpha` tag when selecting this release. The unscoped `cvld` name was rejected by npm's similarity policy even though the registry returned no existing package. The repository and component name remain cvld.
 
 The exact package was produced and consumed in [manual CI run 2](https://crow.corbet.ch/repos/11/pipeline/2), source `32c5416c6b0064de7d3b2122f7ee59438e45318c`. All 44 behavioral tests passed. A separate temporary consumer installed the actual tarball with lifecycle scripts disabled, explicitly installed the checksum-pinned native library, and exercised all five published import paths. The release contains 16 files and no cvld installation lifecycle hook.
 
