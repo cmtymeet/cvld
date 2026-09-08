@@ -8,3 +8,5 @@ export { createPasskeyService } from './passkeys.js';
 export { createMemoryCredentialStore } from './credential-store.js';
 export { createSqliteState } from './sqlite.js';
 export { verifyAdmission, admissionBytes, admissionKeyId } from './admission.js';
+
+export function restoreHolder() { throw new Error('Holder restoration not implemented'); }
