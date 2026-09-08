@@ -266,3 +266,11 @@ test('an untrusted credential issuer cannot impersonate trusted public parameter
   const v = verifier(issuer);
   assert.equal(await v.verify(await attempt(v, holder, attacker)), false);
 });
+
+test('a verifier cannot trick the holder into revealing its exact credential expiry', async () => {
+  const { issuer, holder } = await member();
+  const v = verifier(issuer);
+  const challenge = v.begin(makeAuthenticator().credential, ORIGIN);
+  challenge.request.requested_attributes.policy.name = 'valid_until';
+  assert.throws(() => holder.present(issuer.public, challenge));
+});
