@@ -33,8 +33,9 @@ JS
 git -C .ci/dependencies/anoncreds-rs diff -- Cargo.toml > "$ARTIFACT_ROOT/anoncreds-cargo-feature.patch"
 sha256sum .ci/dependencies/anoncreds-rs/Cargo.toml > "$ARTIFACT_ROOT/anoncreds-manifest-after.sha256"
 if test "${RESOLVE_DEPENDENCIES:-0}" = 1; then
-  cargo generate-lockfile --manifest-path native/holder/Cargo.toml
-  cargo generate-lockfile --manifest-path native/holder-bindgen/Cargo.toml
+  # Preserve already resolved versions when a changed feature adds dependencies.
+  cargo metadata --format-version 1 --manifest-path native/holder/Cargo.toml > "$ARTIFACT_ROOT/holder-cargo-metadata.json"
+  cargo metadata --format-version 1 --manifest-path native/holder-bindgen/Cargo.toml > "$ARTIFACT_ROOT/holder-bindgen-cargo-metadata.json"
   date -u +%FT%TZ > "$ARTIFACT_ROOT/holder-dependency-resolution-time.txt"
 fi
 cp native/holder/Cargo.lock "$ARTIFACT_ROOT/holder-Cargo.lock"

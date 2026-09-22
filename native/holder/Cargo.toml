@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 # Prepared from the exact upstream revision by the shared CI source step.
-anoncreds = { path = "../../.ci/dependencies/anoncreds-rs", default-features = false, features = ["zeroize"] }
+anoncreds = { path = "../../.ci/dependencies/anoncreds-rs", default-features = false, features = ["zeroize", "w3c"] }
 wasm-bindgen = "=0.2.128"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
