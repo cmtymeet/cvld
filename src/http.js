@@ -72,18 +72,40 @@ export function createEntryHandler(options) {
     if (suppliedOrigin !== null && suppliedOrigin !== origin) return false;
     if (sessionId && request.method !== 'GET' && suppliedOrigin !== origin) return false;
     if (request.method !== 'GET' && suppliedOrigin !== origin && !bearerOnly) return false;
+    const current = (principal) => {
+      const value = entry.isCurrentMember(principal.memberId);
+      return value && typeof value.then === 'function' ? value.then(ok => ok ? principal : false) : value ? principal : false;
+    };
+    const bearerPrincipal = () => {
+      if (!match || !apiKeys || typeof apiKeys.authenticate !== 'function' || typeof entry.isCurrentMember !== 'function') return false;
+      const value = apiKeys.authenticate(match[1], scope);
+      const checked = principal => principal ? current(principal) : false;
+      return value && typeof value.then === 'function' ? value.then(checked) : checked(value);
+    };
+    const sessionPrincipal = session => session && typeof session.memberId === 'string' ? { kind: 'session', sessionId, memberId: session.memberId } : false;
+    const inspectSession = session => {
+      const principal = sessionPrincipal(session);
+      if (!principal) return bearerPrincipal();
+      // authenticatedSession already checks membership and then rechecks the
+      // live session after that awaited read. Do not introduce another read
+      // after its revocation check.
+      if (typeof entry.authenticatedSession === 'function') return principal;
+      if (typeof entry.isCurrentMember !== 'function') return principal;
+      const value = current(principal);
+      const checked = result => {
+        const live = entry.getSession?.(sessionId);
+        return result && live?.memberId === session.memberId && live.expiresAt === session.expiresAt ? result : bearerPrincipal();
+      };
+      return value && typeof value.then === 'function' ? value.then(checked) : checked(value);
+    };
     if (sessionId) {
       const session = typeof entry.authenticatedSession === 'function'
         ? entry.authenticatedSession(sessionId)
         : typeof entry.getSession === 'function' ? entry.getSession(sessionId) : false;
-      if (session && typeof session.memberId === 'string' &&
-          (typeof entry.isCurrentMember !== 'function' || entry.isCurrentMember(session.memberId))) {
-        return { kind: 'session', sessionId, memberId: session.memberId };
-      }
+      if (session && typeof session.then === 'function') return session.then(inspectSession);
+      return inspectSession(session);
     }
-    if (!match || !apiKeys || typeof apiKeys.authenticate !== 'function' || typeof entry.isCurrentMember !== 'function') return false;
-    const principal = apiKeys.authenticate(match[1], scope);
-    return principal && entry.isCurrentMember(principal.memberId) ? principal : false;
+    return bearerPrincipal();
   }
   const handle = async function handle(request) {
     try {
@@ -124,30 +146,30 @@ export function createEntryHandler(options) {
         return result ? json(200, result) : json(401, { ok: false });
       }
       if (route === 'POST /auth/api-keys') {
-        const principal = authenticatedPrincipal(request, 'api-key:manage');
-        if (!principal || principal.kind !== 'session' || !apiKeys?.create) return json(401, { ok: false });
         const input = await body(request);
-        return json(200, apiKeys.create({ memberId: principal.memberId, name: input?.name, scopes: input?.scopes, expiresAt: input?.expiresAt }));
+        const principal = await authenticatedPrincipal(request, 'api-key:manage');
+        if (!principal || principal.kind !== 'session' || !apiKeys?.create) return json(401, { ok: false });
+        return json(200, await apiKeys.create({ memberId: principal.memberId, name: input?.name, scopes: input?.scopes, expiresAt: input?.expiresAt }));
       }
       if (route === 'GET /auth/api-keys') {
-        const principal = authenticatedPrincipal(request, 'api-key:manage');
+        const principal = await authenticatedPrincipal(request, 'api-key:manage');
         if (!principal || principal.kind !== 'session' || !apiKeys?.list) return json(401, { ok: false });
-        return json(200, apiKeys.list(principal.memberId));
+        return json(200, await apiKeys.list(principal.memberId));
       }
       if (route === 'POST /auth/api-keys/revoke') {
-        const principal = authenticatedPrincipal(request, 'api-key:manage');
-        if (!principal || principal.kind !== 'session' || !apiKeys?.revoke) return json(401, { ok: false });
         const input = await body(request);
-        return json(200, { ok: apiKeys.revoke({ memberId: principal.memberId, id: input?.id }) });
+        const principal = await authenticatedPrincipal(request, 'api-key:manage');
+        if (!principal || principal.kind !== 'session' || !apiKeys?.revoke) return json(401, { ok: false });
+        return json(200, { ok: await apiKeys.revoke({ memberId: principal.memberId, id: input?.id }) });
       }
       if (route === 'POST /credential/begin') {
-        const principal = authenticatedPrincipal(request, 'credentials:issue');
-        const result = principal ? entry.beginCredential({ principal }) : false;
+        const principal = await authenticatedPrincipal(request, 'credentials:issue');
+        const result = principal ? await entry.beginCredential({ principal }) : false;
         return result ? json(200, result) : json(401, { ok: false });
       }
       if (route === 'POST /credential/issue') {
         const input = await body(request);
-        const principal = authenticatedPrincipal(request, 'credentials:issue');
+        const principal = await authenticatedPrincipal(request, 'credentials:issue');
         const result = principal ? await entry.issueCredential({ principal, id: input?.id, request: input?.request }) : false;
         return result ? json(200, result) : json(401, { ok: false });
       }

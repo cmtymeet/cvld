@@ -14,6 +14,8 @@
     "./http": "./src/http.js",
     "./voucher-bridge": "./src/voucher-bridge.js",
     "./api-keys": "./src/api-keys.js",
+    "./turso": "./src/turso.js",
+    "./api-keys-turso": "./src/api-keys-turso.js",
     "./profile-policy": "./src/profile-policy.js",
     "./holder": "./src/browser-holder.js",
     "./holder-worker": "./src/holder-worker.js",
@@ -44,7 +46,8 @@
   },
   "dependencies": {
     "@hyperledger/anoncreds-nodejs": "0.4.0",
-    "@simplewebauthn/server": "14.0.1"
+    "@simplewebauthn/server": "14.0.1",
+    "@libsql/client": "0.18.0"
   },
   "devDependencies": {
     "@levischuck/tiny-cbor": "0.3.6",
