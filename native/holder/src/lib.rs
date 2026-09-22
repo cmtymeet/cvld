@@ -1,9 +1,9 @@
 //! Thin browser binding to the existing AnonCreds implementation.
 //! The holder's link secret and request metadata never cross the server API.
 use anoncreds::{prover, verifier};
-use anoncreds::types::{Credential, CredentialDefinition, CredentialOffer, CredentialRequestMetadata,
-    LinkSecret, PresentCredentials, Presentation, PresentationRequest, Schema};
-use anoncreds::data_types::{cred_def::CredentialDefinitionId, schema::SchemaId};
+use anoncreds::types::{Credential, CredentialOffer, CredentialRequestMetadata,
+    LinkSecret, PresentCredentials, Presentation, PresentationRequest};
+use anoncreds::data_types::{cred_def::{CredentialDefinition, CredentialDefinitionId}, schema::{Schema, SchemaId}};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
