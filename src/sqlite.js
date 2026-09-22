@@ -96,7 +96,7 @@ export function createSqliteState({ path, maxReceipts, maxCredentials, maxVouche
               db.prepare('SELECT count(*) AS n FROM credentials WHERE community_id = ? AND member_id = ?').get(communityId, memberId).n >= maxPerMember) return false;
           db.prepare('INSERT INTO voucher_spends VALUES (?, ?, ?, ?, ?)').run(receiptId, communityId, memberId, memberBinding, validUntil);
           db.prepare('INSERT INTO members VALUES (?, ?, ?, ?, ?)').run(communityId, memberId, chatPublicKey, JSON.stringify(authorization), receiptId);
-          db.prepare('INSERT INTO credentials VALUES (?, ?, ?, ?, ?, ?)').run(communityId, memberId, credential.id, credential.publicKey, credential.counter, JSON.stringify(credential.transports ?? []));
+          db.prepare('INSERT INTO credentials (community_id, id, member_id, public_key, counter, transports) VALUES (?, ?, ?, ?, ?, ?)').run(communityId, credential.id, memberId, credential.publicKey, credential.counter, JSON.stringify(credential.transports ?? []));
           return true;
         });
       },

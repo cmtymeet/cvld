@@ -53,6 +53,8 @@ test('voucher registration creates one durable member, admission and passkey; lo
     const entry = service(db), enrolled = await register(entry);
     assert.equal(enrolled.result.memberId, enrolled.input.memberId);
     assert.equal(db.members.get(communityId, enrolled.input.memberId).chatPublicKey, enrolled.input.chatPublicKey);
+    assert.equal(db.credentials.get(communityId, enrolled.authenticator.credential.id).memberId, enrolled.input.memberId);
+    assert.equal(db.credentials.get(communityId, enrolled.authenticator.credential.id).counter, 1);
     assert.equal(enrolled.result.admission.expiresAt, NOW + 60);
     assert.equal(await entry.finishRegistration(enrolled.finish), false);
     entry.revokeSession(enrolled.result.sessionId);
