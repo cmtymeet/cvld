@@ -140,6 +140,7 @@ export async function createTursoState(options) {
   }
 
   const state = {
+    get healthy() { return !retired; },
     async close() {
       retired = true;
       if (ownsClient && typeof client.close === 'function') await client.close();

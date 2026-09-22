@@ -81,6 +81,7 @@ export async function createTursoApiKeyService(options) {
     return value;
   }
   return Object.freeze({
+    get healthy() { return !retired; },
     async create({ memberId, name, scopes, expiresAt }) {
       const owner = member(memberId), nameValue = label(name), requestedScopes = structuredClone(scopes);
       if (!Array.isArray(requestedScopes) || !requestedScopes.length || requestedScopes.length > allowedScopes.size || new Set(requestedScopes).size !== requestedScopes.length || requestedScopes.some(value => !allowedScopes.has(value))) throw new Error('API scope rejected');
