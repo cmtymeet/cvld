@@ -15,18 +15,22 @@ assert(process.env.BROWSER_BIN && process.env.ARTIFACT_ROOT, 'Preinstalled brows
 const root = resolve('.'), generated = resolve('generated/holder'), profiles = resolve('.ci/dependencies/cfrm/browser/profiles');
 const mime = { '.js': 'text/javascript', '.wasm': 'application/wasm' };
 const evidence = { source: process.env.CI_COMMIT_SHA, ok: false, checks: [], servedAssets: {},
-  scope: 'Real AnonCreds browser holder and Node verification; synthetic voucher-factor attestation; no product admission or Tor' };
+  scope: 'Real AnonCreds browser holder and dedicated Worker runtime with Node verification; synthetic voucher-factor attestation; no product admission or Tor' };
 const check = (condition, label) => { assert(condition, label); evidence.checks.push(label); };
 const server = createServer(async (request, response) => {
   try {
     if (request.method !== 'GET') { response.writeHead(405).end(); return; }
     const pathname = new URL(request.url, 'http://localhost').pathname;
     if (pathname === '/') { response.writeHead(200, { 'Content-Type': 'text/html' }).end('<!doctype html><title>Credential holder contract</title>'); return; }
-    const base = pathname.startsWith('/holder/') ? generated : pathname.startsWith('/profiles/') ? profiles : undefined;
+    const base = pathname.startsWith('/holder/') || pathname.startsWith('/generated/holder/') ? generated
+      : pathname.startsWith('/profiles/') ? profiles : undefined;
     let file;
     if (pathname === '/client.js') file = join(root, 'src/client.js');
+    else if (pathname === '/holder-worker.js') file = join(root, 'src/holder-worker.js');
+    else if (pathname === '/browser-holder.js') file = join(root, 'src/browser-holder.js');
     else if (base) {
-      file = resolve(base, '.' + decodeURIComponent(pathname.slice(pathname.indexOf('/', 1))));
+      const prefix = pathname.startsWith('/generated/holder/') ? '/generated/holder' : pathname.slice(0, pathname.indexOf('/', 1));
+      file = resolve(base, '.' + decodeURIComponent(pathname.slice(prefix.length)));
       if (!file.startsWith(base + sep)) { response.writeHead(404).end(); return; }
     }
     if (!file || !mime[extname(file)]) { response.writeHead(404).end(); return; }
@@ -91,6 +95,69 @@ try {
     return { request, proof, restoredProof, browserVerified, disclosureRejected, provingMs,
       encryptedStateOnly: !JSON.stringify(encrypted).includes('linkSecret') };
   }, { publicIssuer, issued, communityId, policyDigest: publicIssuer.policyDigest, now: NOW });
+  const runtimeRequest = await page.evaluate(async ({ publicIssuer, offer, communityId, memberId }) => {
+    const { createBrowserCredentialHolder } = await import('/browser-holder.js');
+    window.runtimeHolder = await createBrowserCredentialHolder({
+      worker: new Worker('/holder-worker.js', { type: 'module' }), publicIssuer, deadlineMs: 15_000,
+    });
+    return { credentialRequest: await window.runtimeHolder.request(offer), binding: { communityId, memberId } };
+  }, { publicIssuer, offer, communityId, memberId });
+  check(!('linkSecret' in runtimeRequest) && !('metadata' in runtimeRequest),
+    'dedicated Worker returns only the public blinded request');
+  const runtimeIssued = await issuer.issue({ offer, request: runtimeRequest,
+    attestations: [gate.attest(offer, runtimeRequest, policy)] });
+  const runtime = await page.evaluate(async ({ publicIssuer, issued, profileRequest }) => {
+    const key = crypto.getRandomValues(new Uint8Array(32));
+    const encrypted = await window.runtimeHolder.accept({ credential: issued, key, context: 'cvld.holder.v1' });
+    window.runtimeHolder.close();
+    const { createBrowserCredentialHolder } = await import('/browser-holder.js');
+    const restored = await createBrowserCredentialHolder({
+      worker: new Worker('/holder-worker.js', { type: 'module' }), publicIssuer, deadlineMs: 15_000,
+    });
+    await restored.restore({ envelope: encrypted, key, context: 'cvld.holder.v1' });
+    const proof = await restored.presentProfile(profileRequest);
+    const workerVerified = await restored.verifyProfile(profileRequest, proof);
+    restored.close(); key.fill(0);
+    return { proof, workerVerified, encryptedStateOnly: !JSON.stringify(encrypted).includes('linkSecret') };
+  }, { publicIssuer, issued: runtimeIssued, profileRequest: result.request });
+  check(runtime.workerVerified === true, 'dedicated Worker verifier accepts its actual presentation');
+  check(verify(result.request, runtime.proof) === true,
+    'independent native Node verifier accepts the dedicated Worker proof');
+  check(runtime.encryptedStateOnly, 'dedicated Worker returns encrypted holder persistence only');
+  const workerFailures = await page.evaluate(async ({ publicIssuer }) => {
+    const { createBrowserCredentialHolder } = await import('/browser-holder.js');
+    const makeWorker = source => {
+      const url = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
+      const raw = new Worker(url, { type: 'module' });
+      let terminated = false;
+      return { url, terminated: () => terminated, worker: {
+        postMessage: (...args) => raw.postMessage(...args),
+        addEventListener: (...args) => raw.addEventListener(...args),
+        terminate: () => { terminated = true; return raw.terminate(); },
+      } };
+    };
+    const brokenSpec = makeWorker('throw new Error("worker failure");');
+    brokenSpec.worker.addEventListener('error', event => event.preventDefault());
+    const broken = brokenSpec.worker;
+    let errorRejected = false;
+    try { await createBrowserCredentialHolder({ worker: broken, publicIssuer, deadlineMs: 1_000 }); }
+    catch { errorRejected = true; }
+    URL.revokeObjectURL(brokenSpec.url);
+    const silentSpec = makeWorker('self.onmessage = () => {};');
+    const silent = silentSpec.worker;
+    let timeoutRejected = false;
+    const started = performance.now();
+    try { await createBrowserCredentialHolder({ worker: silent, publicIssuer, deadlineMs: 50 }); }
+    catch { timeoutRejected = true; }
+    URL.revokeObjectURL(silentSpec.url);
+    return { errorRejected, errorTerminated: brokenSpec.terminated(), timeoutRejected,
+      timeoutTerminated: silentSpec.terminated(),
+      timeoutMs: performance.now() - started };
+  }, { publicIssuer });
+  check(workerFailures.errorRejected && workerFailures.errorTerminated,
+    'Worker startup errors reject without exposing crypto details and terminate the Worker');
+  check(workerFailures.timeoutRejected && workerFailures.timeoutTerminated && workerFailures.timeoutMs < 2_000,
+    'bounded Worker timeout rejects and terminates within the deadline');
   function verify(request, proof) {
     let presentation;
     try {
@@ -128,7 +195,7 @@ try {
   evidence.privateStateExportedToNode = false; evidence.ok = true;
 } catch (error) { evidence.error = String(error.stack ?? error); process.exitCode = 1; }
 finally {
-  if (page) await page.evaluate(() => window.holder?.free()).catch(() => {});
+  if (page) await page.evaluate(() => { window.runtimeHolder?.close(); window.holder?.free(); }).catch(() => {});
   await browser?.close(); await new Promise(accept => server.close(accept));
   evidence.browserErrors = pageErrors; evidence.externalRequests = externalRequests;
   await writeFile(join(process.env.ARTIFACT_ROOT, 'holder-browser-evidence.json'), JSON.stringify(evidence, null, 2) + '\n');
