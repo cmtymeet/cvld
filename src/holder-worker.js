@@ -27,7 +27,7 @@ self.onmessage = async ({ data }) => {
       case 'init':
         if (initialized) throw new Error('Rejected');
         issuer = wire(data.issuer);
-        await init();
+        await init({ module_or_path: new URL('../generated/holder/cvld_holder_bg.wasm', import.meta.url) });
         initialized = true;
         break;
       case 'request': {
