@@ -56,7 +56,8 @@ test('voucher registration creates one durable member, admission and passkey; lo
     assert.equal(enrolled.result.admission.expiresAt, NOW + 60);
     assert.equal(await entry.finishRegistration(enrolled.finish), false);
     entry.revokeSession(enrolled.result.sessionId);
-    const authenticated = await login(entry, enrolled.authenticator, { counter: 1 });
+    // The mandatory precommit assertion already advanced the counter to one.
+    const authenticated = await login(entry, enrolled.authenticator, { counter: 2 });
     assert.equal(entry.getSession(authenticated.result.sessionId).memberId, enrolled.input.memberId);
     assert.equal(await entry.finishAuthentication(authenticated.input), false);
     assert.equal(entry.revokeSession(authenticated.result.sessionId), true);
@@ -141,12 +142,12 @@ test('concurrent nonzero counter assertions produce only one session and capacit
     const entry = service(db, { maxSessions: 1 }), enrolled = await register(entry);
     entry.revokeSession(enrolled.result.sessionId);
     const starts = await Promise.all([entry.beginAuthentication(), entry.beginAuthentication()]);
-    const results = await Promise.all(starts.map(start => entry.finishAuthentication({ id: start.id, response: enrolled.authenticator.assert(start.options.challenge, { counter: 1 }) })));
+    const results = await Promise.all(starts.map(start => entry.finishAuthentication({ id: start.id, response: enrolled.authenticator.assert(start.options.challenge, { counter: 2 }) })));
     assert.equal(results.filter(Boolean).length, 1);
-    assert.equal((await login(entry, enrolled.authenticator, { counter: 2 })).result, false);
-    assert.equal(db.credentials.get(communityId, enrolled.authenticator.credential.id).counter, 1);
+    assert.equal((await login(entry, enrolled.authenticator, { counter: 3 })).result, false);
+    assert.equal(db.credentials.get(communityId, enrolled.authenticator.credential.id).counter, 2);
     entry.revokeSession(results.find(Boolean).sessionId);
-    assert.ok((await login(entry, enrolled.authenticator, { counter: 2 })).result);
+    assert.ok((await login(entry, enrolled.authenticator, { counter: 3 })).result);
   } finally { db.close(); }
 });
 
