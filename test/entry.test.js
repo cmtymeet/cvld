@@ -37,7 +37,7 @@ async function register(entry, input = identity(), authenticator = makeAuthentic
   assert.equal(typeof start.options.challenge, 'string');
   const precommit = await entry.beginRegistrationPrecommit({ id: start.id, response: authenticator.register(start.options.challenge) });
   assert.equal(precommit.options.allowCredentials[0].id, authenticator.credential.id);
-  const finish = { id: start.id, walletResponse: authenticator.assert(precommit.options.challenge) };
+  const finish = { id: start.id, walletResponse: authenticator.assert(precommit.options.challenge, { counter: 1 }) };
   return { input, authenticator, start, finish, result: await entry.finishRegistration(finish) };
 }
 async function login(entry, authenticator, options = {}) {
